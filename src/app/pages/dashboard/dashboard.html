@@ -1,0 +1,130 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <h1>Bảng điều khiển</h1>
+    <button class="refresh-btn" (click)="refreshData()" [disabled]="isLoading">
+      <i class="fas fa-sync-alt" [class.spinning]="isLoading"></i>
+      Làm mới
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="loading-spinner"></div>
+    <p>Đang tải dữ liệu...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="hasError && !isLoading" class="error-container">
+    <i class="fas fa-exclamation-triangle"></i>
+    <p>{{ errorMessage }}</p>
+    <button class="retry-btn" (click)="refreshData()">Thử lại</button>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="!isLoading && !hasError">
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-tags"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ totalCategories }}</h3>
+          <p>Danh mục</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-box"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ totalProducts }}</h3>
+          <p>Sản phẩm</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-cube"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ totalVariants }}</h3>
+          <p>Biến thể</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-warehouse"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ totalStock }}</h3>
+          <p>Tồn kho</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="recent-activities">
+      <div class="recent-section">
+        <div class="section-header">
+          <h2>Danh mục mới nhất</h2>
+          <a routerLink="/product-categories" class="view-all-link">Xem tất cả</a>
+        </div>
+        <div class="recent-list">
+          <div *ngFor="let category of recentCategories" class="recent-item">
+            <div class="item-icon">
+              <i class="fas fa-tag"></i>
+            </div>
+            <div class="item-content">
+              <h4>{{ category.name }}</h4>
+              <p>{{ category.description || 'Không có mô tả' }}</p>
+              <span class="item-meta">{{ formatDate(category.createdAt) }}</span>
+            </div>
+            <div class="item-status">
+              <span class="status-badge" [class.active]="category.active" [class.inactive]="!category.active">
+                {{ category.active ? 'Hoạt động' : 'Tạm dừng' }}
+              </span>
+            </div>
+          </div>
+          <div *ngIf="recentCategories.length === 0" class="empty-state">
+            <p>Chưa có danh mục nào</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="recent-section">
+        <div class="section-header">
+          <h2>Sản phẩm mới nhất</h2>
+          <a routerLink="/products" class="view-all-link">Xem tất cả</a>
+        </div>
+        <div class="recent-list">
+          <div *ngFor="let product of recentProducts" class="recent-item">
+            <div class="item-icon">
+              <i class="fas fa-box"></i>
+            </div>
+            <div class="item-content">
+              <h4>{{ product.name }}</h4>
+              <p>{{ product.categoryNames?.join(', ') || 'Chưa phân loại' }}</p>
+              <span class="item-meta">
+                {{ formatPrice(product.price) }} • {{ formatDate(product.createdAt) }}
+              </span>
+            </div>
+            <div class="item-status">
+              <span class="status-badge" [class.active]="product.active" [class.inactive]="!product.active">
+                {{ product.active ? 'Hoạt động' : 'Tạm dừng' }}
+              </span>
+              <span *ngIf="product.variantCount" class="variant-count">
+                {{ product.variantCount }} biến thể
+              </span>
+            </div>
+          </div>
+          <div *ngIf="recentProducts.length === 0" class="empty-state">
+            <p>Chưa có sản phẩm nào</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

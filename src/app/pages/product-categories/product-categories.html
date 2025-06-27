@@ -1,0 +1,248 @@
+<div class="product-categories">
+  <div class="page-header">
+    <h2>Quản lý Danh mục Sản phẩm</h2>
+    <div class="header-actions">
+      <button class="refresh-btn" (click)="refreshData()" [disabled]="isLoading">
+        <i class="fas fa-sync-alt" [class.spinning]="isLoading"></i>
+        Làm mới
+      </button>
+      <button class="add-btn" (click)="openCreateModal()">
+        <i class="fas fa-plus"></i>
+        Thêm danh mục
+      </button>
+    </div>
+  </div>
+
+  <!-- Search and Filter -->
+  <div class="filters">
+    <div class="search-container">
+      <i class="fas fa-search search-icon"></i>
+      <input 
+        type="text" 
+        placeholder="Tìm kiếm danh mục..." 
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()"
+        class="search-input">
+    </div>
+    <select [(ngModel)]="filterActive" (change)="onFilterChange()" class="filter-select">
+      <option [ngValue]="null">Tất cả trạng thái</option>
+      <option [ngValue]="true">Hoạt động</option>
+      <option [ngValue]="false">Tạm dừng</option>
+    </select>
+    <select [(ngModel)]="sortBy" (change)="onSortChange()" class="sort-select">
+      <option value="name">Sắp xếp theo tên</option>
+      <option value="productCount">Sắp xếp theo số sản phẩm</option>
+      <option value="createdAt">Sắp xếp theo ngày tạo</option>
+    </select>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="loading-spinner"></div>
+    <p>Đang tải danh mục...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="hasError && !isLoading" class="error-container">
+    <i class="fas fa-exclamation-triangle"></i>
+    <p>{{ errorMessage }}</p>
+    <button class="retry-btn" (click)="refreshData()">Thử lại</button>
+  </div>
+
+  <!-- Categories Table -->
+  <div *ngIf="!isLoading && !hasError" class="table-container">
+    <table class="categories-table">
+      <thead>
+        <tr>
+          <th>Tên danh mục</th>
+          <th>Mô tả</th>
+          <th>Trạng thái</th>
+          <th>Số sản phẩm</th>
+          <th>Ngày tạo</th>
+          <th>Ngày cập nhật</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let category of filteredCategories" class="category-row">
+          <td class="category-name">
+            <strong>{{ category.name }}</strong>
+          </td>
+          <td class="category-description">
+            {{ category.description || 'Không có mô tả' }}
+          </td>
+          <td class="category-status">
+            <span [class]="getStatusBadgeClass(category.active)">
+              {{ getStatusText(category.active) }}
+            </span>
+          </td>
+          <td class="product-count">
+            <span class="badge bg-info">{{ category.productCount || 0 }}</span>
+          </td>
+          <td class="created-date">
+            {{ formatDate(category.createdAt) }}
+          </td>
+          <td class="updated-date">
+            {{ formatDate(category.updatedAt) }}
+          </td>
+          <td class="actions">
+            <div class="action-buttons">
+              <button 
+                class="toggle-btn" 
+                (click)="toggleActiveStatus(category)"
+                [title]="category.active ? 'Tạm dừng' : 'Kích hoạt'">
+                <i class="fas" [class.fa-pause]="category.active" [class.fa-play]="!category.active"></i>
+              </button>
+              <button class="edit-btn" (click)="openEditModal(category)" title="Chỉnh sửa">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="delete-btn" (click)="openDeleteModal(category)" title="Xóa">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredCategories.length === 0" class="empty-state">
+      <i class="fas fa-folder-open"></i>
+      <h3>Không tìm thấy danh mục nào</h3>
+      <p *ngIf="searchTerm || filterActive !== null">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+      <p *ngIf="!searchTerm && filterActive === null">Chưa có danh mục nào được tạo</p>
+      <button *ngIf="!searchTerm && filterActive === null" class="add-btn" (click)="openCreateModal()">
+        <i class="fas fa-plus"></i>
+        Tạo danh mục đầu tiên
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Modal -->
+<div *ngIf="showCreateModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Thêm danh mục mới</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="createCategory()">
+        <div class="form-group">
+          <label for="categoryName">Tên danh mục *</label>
+          <input 
+            type="text" 
+            id="categoryName" 
+            [(ngModel)]="categoryForm.name" 
+            name="categoryName"
+            placeholder="Nhập tên danh mục"
+            [class.is-invalid]="nameError"
+            required>
+          <div *ngIf="nameError" class="invalid-feedback">
+            {{ nameError }}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="categoryDescription">Mô tả</label>
+          <textarea 
+            id="categoryDescription" 
+            [(ngModel)]="categoryForm.description" 
+            name="categoryDescription"
+            placeholder="Nhập mô tả danh mục"
+            rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="categoryForm.active" 
+              name="categoryActive">
+            <span class="checkmark"></span>
+            Hoạt động
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeModal()" [disabled]="isSubmitting">Hủy</button>
+          <button type="submit" class="save-btn" [disabled]="isSubmitting">
+            <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
+            {{ isSubmitting ? 'Đang lưu...' : 'Lưu' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div *ngIf="showEditModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Chỉnh sửa danh mục</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="updateCategory()">
+        <div class="form-group">
+          <label for="editCategoryName">Tên danh mục *</label>
+          <input 
+            type="text" 
+            id="editCategoryName" 
+            [(ngModel)]="categoryForm.name" 
+            name="editCategoryName"
+            placeholder="Nhập tên danh mục"
+            required>
+        </div>
+        <div class="form-group">
+          <label for="editCategoryDescription">Mô tả</label>
+          <textarea 
+            id="editCategoryDescription" 
+            [(ngModel)]="categoryForm.description" 
+            name="editCategoryDescription"
+            placeholder="Nhập mô tả danh mục"
+            rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="categoryForm.active" 
+              name="editCategoryActive">
+            <span class="checkmark"></span>
+            Hoạt động
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeModal()">Hủy</button>
+          <button type="submit" class="save-btn">Cập nhật</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div *ngIf="showDeleteModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Xác nhận xóa</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="delete-confirmation">
+        <i class="fas fa-exclamation-triangle warning-icon"></i>
+        <p>Bạn có chắc chắn muốn xóa danh mục <strong>"{{ selectedCategory?.name }}"</strong>?</p>
+        <p class="warning-text">Hành động này không thể hoàn tác!</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" (click)="closeModal()">Hủy</button>
+        <button type="button" class="delete-btn" (click)="deleteCategory()">Xóa</button>
+      </div>
+    </div>
+  </div>
+</div>

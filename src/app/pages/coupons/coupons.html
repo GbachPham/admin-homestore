@@ -1,0 +1,372 @@
+<div class="coupons-page">
+  <!-- Header -->
+  <div class="page-header">
+    <h1>Quản lý mã giảm giá</h1>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openCreateForm()">
+        <i class="fas fa-plus"></i>
+        Thêm mã giảm giá
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid" *ngIf="stats">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-ticket-alt"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.totalCoupons }}</h3>
+        <p>Tổng mã giảm giá</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.activeCoupons }}</h3>
+        <p>Đang hoạt động</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-star"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.usableCoupons }}</h3>
+        <p>Có thể sử dụng</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-chart-line"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.totalUsage }}</h3>
+        <p>Lượt sử dụng</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filters-row">
+      <div class="filter-group">
+        <label>Tìm kiếm</label>
+        <input 
+          type="text" 
+          class="form-control"
+          placeholder="Tìm theo mã hoặc tên..."
+          [(ngModel)]="searchTerm"
+          (input)="applyFilters()"
+        >
+      </div>
+      
+      <div class="filter-group">
+        <label>Trạng thái</label>
+        <select class="form-control" [(ngModel)]="filterActive" (change)="applyFilters()">
+          <option [value]="null">Tất cả</option>
+          <option [value]="true">Hoạt động</option>
+          <option [value]="false">Không hoạt động</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label>Loại</label>
+        <select class="form-control" [(ngModel)]="filterType" (change)="applyFilters()">
+          <option value="">Tất cả loại</option>
+          <option *ngFor="let type of couponTypes" [value]="type.value">
+            {{ type.label }}
+          </option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label>&nbsp;</label>
+        <button class="btn btn-secondary" (click)="resetFilters()">
+          <i class="fas fa-undo"></i>
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Đang tải...</p>
+  </div>
+
+  <!-- Coupons Table -->
+  <div class="table-container" *ngIf="!loading">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Mã</th>
+          <th>Tên</th>
+          <th>Loại</th>
+          <th>Giá trị</th>
+          <th>Sử dụng</th>
+          <th>Thời gian</th>
+          <th>Trạng thái</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let coupon of filteredCoupons">
+          <td>
+            <span class="coupon-code">{{ coupon.code }}</span>
+          </td>
+          <td>
+            <div class="coupon-info">
+              <h4>{{ coupon.name }}</h4>
+              <p *ngIf="coupon.description">{{ coupon.description }}</p>
+            </div>
+          </td>
+          <td>
+            <span class="coupon-type" [ngClass]="coupon.type?.toLowerCase()">
+              {{ coupon.type === 'PERCENTAGE' ? 'Phần trăm' : 'Số tiền' }}
+            </span>
+          </td>
+          <td>
+            <div class="coupon-value">
+              <strong>{{ coupon.value }}{{ coupon.type === 'PERCENTAGE' ? '%' : 'đ' }}</strong>
+              <div *ngIf="coupon.minimumOrderValue" class="text-muted">
+                Đơn tối thiểu: {{ coupon.minimumOrderValue }}đ
+              </div>
+              <div *ngIf="coupon.maximumDiscountAmount" class="text-muted">
+                Giảm tối đa: {{ coupon.maximumDiscountAmount }}đ
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="usage-info">
+              <span>{{ coupon.usedCount || 0 }}</span>
+              <span *ngIf="coupon.usageLimit">/ {{ coupon.usageLimit }}</span>
+              <span *ngIf="!coupon.usageLimit">/ ∞</span>
+            </div>
+          </td>
+          <td>
+            <div class="date-info">
+              <div *ngIf="coupon.startDate" class="text-muted">
+                Từ: {{ formatDate(coupon.startDate) }}
+              </div>
+              <div *ngIf="coupon.endDate" class="text-muted">
+                Đến: {{ formatDate(coupon.endDate) }}
+              </div>
+            </div>
+          </td>
+          <td>
+            <span 
+              class="status-badge" 
+              [ngClass]="getStatusClass(coupon)"
+            >
+              {{ getStatusText(coupon) }}
+            </span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button 
+                class="btn btn-sm btn-outline-primary" 
+                (click)="openEditForm(coupon)"
+                title="Chỉnh sửa"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button 
+                class="btn btn-sm" 
+                [ngClass]="coupon.active ? 'btn-outline-warning' : 'btn-outline-success'"
+                (click)="toggleStatus(coupon)"
+                [title]="coupon.active ? 'Tạm dừng' : 'Kích hoạt'"
+              >
+                <i class="fas" [ngClass]="coupon.active ? 'fa-pause' : 'fa-play'"></i>
+              </button>
+              <button 
+                class="btn btn-sm btn-outline-danger" 
+                (click)="deleteCoupon(coupon)"
+                title="Xóa"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredCoupons.length === 0" class="empty-state">
+      <i class="fas fa-ticket-alt"></i>
+      <h3>Không có mã giảm giá nào</h3>
+      <p>Hãy tạo mã giảm giá đầu tiên của bạn</p>
+      <button class="btn btn-primary" (click)="openCreateForm()">
+        Thêm mã giảm giá
+      </button>
+    </div>
+  </div>
+
+  <!-- Create/Edit Form Modal -->
+  <div class="modal" [ngClass]="{ 'show': showForm }" *ngIf="showForm">
+    <div class="modal-backdrop" (click)="closeForm()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>{{ editingCoupon ? 'Chỉnh sửa mã giảm giá' : 'Thêm mã giảm giá mới' }}</h2>
+        <button class="modal-close" (click)="closeForm()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <form [formGroup]="couponForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Mã giảm giá *</label>
+              <input 
+                type="text" 
+                class="form-control"
+                formControlName="code"
+                placeholder="VD: NEWYEAR2024"
+              >
+              <div class="error-message" *ngIf="couponForm.get('code')?.invalid && couponForm.get('code')?.touched">
+                Mã giảm giá là bắt buộc (tối thiểu 3 ký tự)
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Tên mã giảm giá *</label>
+              <input 
+                type="text" 
+                class="form-control"
+                formControlName="name"
+                placeholder="VD: Giảm giá Tết 2024"
+              >
+              <div class="error-message" *ngIf="couponForm.get('name')?.invalid && couponForm.get('name')?.touched">
+                Tên mã giảm giá là bắt buộc (tối thiểu 3 ký tự)
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Mô tả</label>
+            <textarea 
+              class="form-control" 
+              formControlName="description"
+              rows="3"
+              placeholder="Mô tả chi tiết về mã giảm giá..."
+            ></textarea>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Loại giảm giá *</label>
+              <select class="form-control" formControlName="type">
+                <option *ngFor="let type of couponTypes" [value]="type.value">
+                  {{ type.label }}
+                </option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Giá trị *</label>
+              <input 
+                type="number" 
+                class="form-control"
+                formControlName="value"
+                [placeholder]="couponForm.get('type')?.value === 'PERCENTAGE' ? 'VD: 15' : 'VD: 50000'"
+              >
+              <div class="error-message" *ngIf="couponForm.get('value')?.invalid && couponForm.get('value')?.touched">
+                Giá trị phải lớn hơn 0
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Đơn hàng tối thiểu</label>
+              <input 
+                type="number" 
+                class="form-control"
+                formControlName="minimumOrderValue"
+                placeholder="VD: 100000"
+              >
+            </div>
+            
+            <div class="form-group" *ngIf="couponForm.get('type')?.value === 'PERCENTAGE'">
+              <label>Giảm tối đa</label>
+              <input 
+                type="number" 
+                class="form-control"
+                formControlName="maximumDiscountAmount"
+                placeholder="VD: 500000"
+              >
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Giới hạn sử dụng</label>
+              <input 
+                type="number" 
+                class="form-control"
+                formControlName="usageLimit"
+                placeholder="VD: 100 (để trống = không giới hạn)"
+              >
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Thời gian bắt đầu *</label>
+              <input 
+                type="datetime-local" 
+                class="form-control"
+                formControlName="startDate"
+              >
+              <div class="error-message" *ngIf="couponForm.get('startDate')?.invalid && couponForm.get('startDate')?.touched">
+                Thời gian bắt đầu là bắt buộc
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Thời gian kết thúc *</label>
+              <input 
+                type="datetime-local" 
+                class="form-control"
+                formControlName="endDate"
+              >
+              <div class="error-message" *ngIf="couponForm.get('endDate')?.invalid && couponForm.get('endDate')?.touched">
+                Thời gian kết thúc là bắt buộc
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                formControlName="active"
+              >
+              <span class="checkmark"></span>
+              Kích hoạt ngay
+            </label>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeForm()">
+            Hủy
+          </button>
+          <button 
+            type="submit" 
+            class="btn btn-primary"
+            [disabled]="couponForm.invalid || loading"
+          >
+            {{ loading ? 'Đang xử lý...' : (editingCoupon ? 'Cập nhật' : 'Tạo mới') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

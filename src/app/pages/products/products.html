@@ -1,0 +1,732 @@
+<div class="products">
+  <div class="page-header">
+    <h2>Quản lý Sản phẩm</h2>
+    <div class="header-actions">
+      <button class="refresh-btn" (click)="refreshData()" [disabled]="isLoading">
+        <i class="fas fa-sync-alt" [class.spinning]="isLoading"></i>
+        Làm mới
+      </button>
+      <button class="add-btn" (click)="openCreateModal()">
+        <i class="fas fa-plus"></i>
+        Thêm sản phẩm
+      </button>
+    </div>
+  </div>
+
+  <!-- Search and Filter -->
+  <div class="filters">
+    <div class="search-container">
+      <i class="fas fa-search search-icon"></i>
+      <input 
+        type="text" 
+        placeholder="Tìm kiếm sản phẩm..." 
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()"
+        class="search-input">
+    </div>
+    <select [(ngModel)]="filterCategory" (change)="onFilterChange()" class="filter-select">
+      <option [ngValue]="null">Tất cả danh mục</option>
+      <option *ngFor="let category of categories" [ngValue]="category.id">
+        {{ category.name }}
+      </option>
+    </select>
+    <select [(ngModel)]="filterActive" (change)="onFilterChange()" class="filter-select">
+      <option [ngValue]="null">Tất cả trạng thái</option>
+      <option [ngValue]="true">Hoạt động</option>
+      <option [ngValue]="false">Tạm dừng</option>
+    </select>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="loading-spinner"></div>
+    <p>Đang tải sản phẩm...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="hasError && !isLoading" class="error-container">
+    <i class="fas fa-exclamation-triangle"></i>
+    <p>{{ errorMessage }}</p>
+    <button class="retry-btn" (click)="refreshData()">Thử lại</button>
+  </div>
+
+  <!-- Products Table -->
+  <div *ngIf="!isLoading && !hasError" class="table-container">
+    <table class="products-table">
+      <thead>
+        <tr>
+          <th>Sản phẩm</th>
+          <th>Danh mục</th>
+          <th>Giá</th>
+          <th>SKU</th>
+          <th>Biến thể</th>
+          <th>Trạng thái</th>
+          <th>Ngày tạo</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let product of filteredProducts" class="product-row">
+          <td class="product-info">
+            <div class="product-image" *ngIf="product.imageUrl">
+              <img [src]="fileUploadService.getFileUrl(product.imageUrl)" [alt]="product.name" />
+            </div>
+            <div class="product-image placeholder" *ngIf="!product.imageUrl">
+              <i class="fas fa-image"></i>
+            </div>
+            <div class="product-details">
+              <h4>{{ product.name }}</h4>
+              <p>{{ product.description || 'Không có mô tả' }}</p>
+            </div>
+          </td>
+          <td class="category-name">
+            {{ product.categoryNames?.join(', ') || 'Chưa phân loại' }}
+          </td>
+          <td class="product-price">
+            {{ formatPrice(product.price) }}
+          </td>
+          <td class="product-sku">
+            {{ product.sku || 'N/A' }}
+          </td>
+          <td class="variants-count">
+            <button 
+              class="variants-btn" 
+              (click)="openVariantsModal(product)"
+              [title]="'Quản lý ' + (product.variantCount || 0) + ' biến thể'">
+              <i class="fas fa-cube"></i>
+              {{ product.variantCount || 0 }}
+            </button>
+          </td>
+          <td class="product-status">
+            <span class="status-badge" [class.active]="product.active" [class.inactive]="!product.active">
+              {{ product.active ? 'Hoạt động' : 'Tạm dừng' }}
+            </span>
+          </td>
+          <td class="created-date">
+            {{ formatDate(product.createdAt) }}
+          </td>
+          <td class="actions">
+            <div class="action-buttons">
+              <button 
+                class="toggle-btn" 
+                (click)="toggleProductStatus(product)"
+                [title]="product.active ? 'Tạm dừng' : 'Kích hoạt'">
+                <i class="fas" [class.fa-pause]="product.active" [class.fa-play]="!product.active"></i>
+              </button>
+              <button class="edit-btn" (click)="openEditModal(product)" title="Chỉnh sửa">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="delete-btn" (click)="openDeleteModal(product)" title="Xóa">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredProducts.length === 0" class="empty-state">
+      <i class="fas fa-box-open"></i>
+      <h3>Không tìm thấy sản phẩm nào</h3>
+      <p *ngIf="searchTerm || filterCategory || filterActive !== null">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+      <p *ngIf="!searchTerm && !filterCategory && filterActive === null">Chưa có sản phẩm nào được tạo</p>
+      <button *ngIf="!searchTerm && !filterCategory && filterActive === null" class="add-btn" (click)="openCreateModal()">
+        <i class="fas fa-plus"></i>
+        Tạo sản phẩm đầu tiên
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Product Modal -->
+<div *ngIf="showCreateModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Thêm sản phẩm mới</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="createProduct()">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="productName">Tên sản phẩm *</label>
+            <input 
+              type="text" 
+              id="productName" 
+              [(ngModel)]="productForm.name" 
+              name="productName"
+              placeholder="Nhập tên sản phẩm"
+              required>
+          </div>
+          <div class="form-group">
+            <label for="productCategory">Danh mục *</label>
+            <select 
+              id="productCategory" 
+              [(ngModel)]="selectedCategoryId" 
+              name="productCategory"
+              (change)="onCategoryChange()"
+              required>
+              <option value="" disabled>Chọn danh mục</option>
+              <option *ngFor="let category of categories" [value]="category.id">
+                {{ category.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="productDescription">Mô tả</label>
+          <textarea 
+            id="productDescription" 
+            [(ngModel)]="productForm.description" 
+            name="productDescription"
+            placeholder="Nhập mô tả sản phẩm"
+            rows="3"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="productPrice">Giá *</label>
+            <input 
+              type="number" 
+              id="productPrice" 
+              [(ngModel)]="productForm.price" 
+              name="productPrice"
+              placeholder="0"
+              min="0"
+              required>
+          </div>
+          <div class="form-group">
+            <label for="productSku">SKU</label>
+            <input 
+              type="text" 
+              id="productSku" 
+              [(ngModel)]="productForm.sku" 
+              name="productSku"
+              placeholder="Nhập mã SKU">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="productImage">Hình ảnh sản phẩm</label>
+          <app-file-upload
+            [currentImageId]="productImageFileId"
+            placeholder="Chọn ảnh sản phẩm..."
+            (fileUploaded)="onProductImageUploaded($event)"
+            (fileRemoved)="onProductImageRemoved()"
+            (uploadError)="onProductImageError($event)">
+          </app-file-upload>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="productForm.active" 
+              name="productActive">
+            <span class="checkmark"></span>
+            Hoạt động
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeModal()">Hủy</button>
+          <button type="submit" class="save-btn">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div *ngIf="showEditModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Chỉnh sửa sản phẩm</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="updateProduct()">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editProductName">Tên sản phẩm *</label>
+            <input 
+              type="text" 
+              id="editProductName" 
+              [(ngModel)]="productForm.name" 
+              name="editProductName"
+              placeholder="Nhập tên sản phẩm"
+              required>
+          </div>
+          <div class="form-group">
+            <label for="editProductCategory">Danh mục *</label>
+            <select 
+              id="editProductCategory" 
+              [(ngModel)]="selectedCategoryId" 
+              name="editProductCategory"
+              (change)="onCategoryChange()"
+              required>
+              <option value="" disabled>Chọn danh mục</option>
+              <option *ngFor="let category of categories" [value]="category.id">
+                {{ category.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="editProductDescription">Mô tả</label>
+          <textarea 
+            id="editProductDescription" 
+            [(ngModel)]="productForm.description" 
+            name="editProductDescription"
+            placeholder="Nhập mô tả sản phẩm"
+            rows="3"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editProductPrice">Giá *</label>
+            <input 
+              type="number" 
+              id="editProductPrice" 
+              [(ngModel)]="productForm.price" 
+              name="editProductPrice"
+              placeholder="0"
+              min="0"
+              required>
+          </div>
+          <div class="form-group">
+            <label for="editProductSku">SKU</label>
+            <input 
+              type="text" 
+              id="editProductSku" 
+              [(ngModel)]="productForm.sku" 
+              name="editProductSku"
+              placeholder="Nhập mã SKU">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="editProductImage">Hình ảnh sản phẩm</label>
+          <app-file-upload
+            [currentImageId]="extractFileIdFromUrl(productForm.imageUrl)"
+            placeholder="Chọn ảnh sản phẩm..."
+            (fileUploaded)="onProductImageUploaded($event)"
+            (fileRemoved)="onProductImageRemoved()"
+            (uploadError)="onProductImageError($event)">
+          </app-file-upload>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="productForm.active" 
+              name="editProductActive">
+            <span class="checkmark"></span>
+            Hoạt động
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeModal()">Hủy</button>
+          <button type="submit" class="save-btn">Cập nhật</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Product Modal -->
+<div *ngIf="showDeleteModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Xác nhận xóa</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="delete-confirmation">
+        <i class="fas fa-exclamation-triangle warning-icon"></i>
+        <p>Bạn có chắc chắn muốn xóa sản phẩm <strong>"{{ selectedProduct?.name }}"</strong>?</p>
+        <p class="warning-text">Hành động này sẽ xóa tất cả biến thể của sản phẩm và không thể hoàn tác!</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" (click)="closeModal()">Hủy</button>
+        <button type="button" class="delete-btn" (click)="deleteProduct()">Xóa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Variants Management Modal -->
+<div *ngIf="showVariantsModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content xl" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Quản lý biến thể - {{ selectedProduct?.name }}</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="variants-header">
+        <button class="add-variant-btn" (click)="openCreateVariantModal()">
+          <i class="fas fa-plus"></i>
+          Thêm biến thể
+        </button>
+      </div>
+
+      <div class="variants-list">
+        <div *ngFor="let variant of productVariants" class="variant-item">
+          <div class="variant-image" *ngIf="variant.imageUrl">
+            <img [src]="fileUploadService.getFileUrl(variant.imageUrl)" [alt]="variant.name" />
+          </div>
+          <div class="variant-image placeholder" *ngIf="!variant.imageUrl">
+            <i class="fas fa-cube"></i>
+          </div>
+          
+          <div class="variant-info">
+            <h4>{{ variant.name }}</h4>
+            <div class="variant-details">
+              <span *ngIf="variant.color" class="detail-item">
+                <strong>Màu:</strong> {{ variant.color }}
+              </span>
+              <span *ngIf="variant.size" class="detail-item">
+                <strong>Size:</strong> {{ variant.size }}
+              </span>
+              <span *ngIf="variant.material" class="detail-item">
+                <strong>Chất liệu:</strong> {{ variant.material }}
+              </span>
+            </div>
+            <p *ngIf="variant.specifications" class="variant-specs">{{ variant.specifications }}</p>
+          </div>
+
+          <div class="variant-stats">
+            <div class="stat-item">
+              <span class="label">Giá bổ sung:</span>
+              <span class="value">{{ formatPrice(variant.additionalPrice || 0) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">Tồn kho:</span>
+              <span class="value">{{ variant.stock || 0 }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">SKU:</span>
+              <span class="value">{{ variant.sku || 'N/A' }}</span>
+            </div>
+          </div>
+
+          <div class="variant-status">
+            <span class="status-badge" [class.active]="variant.active" [class.inactive]="!variant.active">
+              {{ variant.active ? 'Hoạt động' : 'Tạm dừng' }}
+            </span>
+          </div>
+
+          <div class="variant-actions">
+            <button class="edit-btn" (click)="openEditVariantModal(variant)" title="Chỉnh sửa">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="delete-btn" (click)="openDeleteVariantModal(variant)" title="Xóa">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="productVariants.length === 0" class="empty-variants">
+          <i class="fas fa-cube"></i>
+          <p>Chưa có biến thể nào</p>
+          <button class="add-variant-btn" (click)="openCreateVariantModal()">
+            <i class="fas fa-plus"></i>
+            Thêm biến thể đầu tiên
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Variant Modal -->
+<div *ngIf="showCreateVariantModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Thêm biến thể mới</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="createVariant()">
+        <div class="form-group">
+          <label for="variantName">Tên biến thể *</label>
+          <input 
+            type="text" 
+            id="variantName" 
+            [(ngModel)]="variantForm.name" 
+            name="variantName"
+            placeholder="Nhập tên biến thể"
+            required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="variantColor">Màu sắc</label>
+            <input 
+              type="text" 
+              id="variantColor" 
+              [(ngModel)]="variantForm.color" 
+              name="variantColor"
+              placeholder="Đỏ, Xanh, Trắng...">
+          </div>
+          <div class="form-group">
+            <label for="variantSize">Kích thước</label>
+            <input 
+              type="text" 
+              id="variantSize" 
+              [(ngModel)]="variantForm.size" 
+              name="variantSize"
+              placeholder="S, M, L, XL...">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="variantMaterial">Chất liệu</label>
+          <input 
+            type="text" 
+            id="variantMaterial" 
+            [(ngModel)]="variantForm.material" 
+            name="variantMaterial"
+            placeholder="Cotton, Polyester...">
+        </div>
+
+        <div class="form-group">
+          <label for="variantSpecs">Thông số kỹ thuật</label>
+          <textarea 
+            id="variantSpecs" 
+            [(ngModel)]="variantForm.specifications" 
+            name="variantSpecs"
+            placeholder="Mô tả chi tiết về biến thể..."
+            rows="3"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="variantSku">SKU</label>
+            <input 
+              type="text" 
+              id="variantSku" 
+              [(ngModel)]="variantForm.sku" 
+              name="variantSku"
+              placeholder="Mã SKU riêng">
+          </div>
+          <div class="form-group">
+            <label for="variantPrice">Giá bổ sung</label>
+            <input 
+              type="number" 
+              id="variantPrice" 
+              [(ngModel)]="variantForm.additionalPrice" 
+              name="variantPrice"
+              placeholder="0"
+              min="0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="variantStock">Số lượng tồn kho</label>
+            <input 
+              type="number" 
+              id="variantStock" 
+              [(ngModel)]="variantForm.stock" 
+              name="variantStock"
+              placeholder="0"
+              min="0">
+          </div>
+          <div class="form-group">
+            <label for="variantImage">Hình ảnh biến thể</label>
+            <app-file-upload
+              [currentImageId]="variantImageFileId"
+              placeholder="Chọn ảnh biến thể..."
+              (fileUploaded)="onVariantImageUploaded($event)"
+              (fileRemoved)="onVariantImageRemoved()"
+              (uploadError)="onVariantImageError($event)">
+            </app-file-upload>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="variantForm.active" 
+              name="variantActive">
+            <span class="checkmark"></span>
+            Hoạt động
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeModal()">Hủy</button>
+          <button type="submit" class="save-btn">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Variant Modal -->
+<div *ngIf="showEditVariantModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Chỉnh sửa biến thể</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="updateVariant()">
+        <div class="form-group">
+          <label for="editVariantName">Tên biến thể *</label>
+          <input 
+            type="text" 
+            id="editVariantName" 
+            [(ngModel)]="variantForm.name" 
+            name="editVariantName"
+            placeholder="Nhập tên biến thể"
+            required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editVariantColor">Màu sắc</label>
+            <input 
+              type="text" 
+              id="editVariantColor" 
+              [(ngModel)]="variantForm.color" 
+              name="editVariantColor"
+              placeholder="Đỏ, Xanh, Trắng...">
+          </div>
+          <div class="form-group">
+            <label for="editVariantSize">Kích thước</label>
+            <input 
+              type="text" 
+              id="editVariantSize" 
+              [(ngModel)]="variantForm.size" 
+              name="editVariantSize"
+              placeholder="S, M, L, XL...">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="editVariantMaterial">Chất liệu</label>
+          <input 
+            type="text" 
+            id="editVariantMaterial" 
+            [(ngModel)]="variantForm.material" 
+            name="editVariantMaterial"
+            placeholder="Cotton, Polyester...">
+        </div>
+
+        <div class="form-group">
+          <label for="editVariantSpecs">Thông số kỹ thuật</label>
+          <textarea 
+            id="editVariantSpecs" 
+            [(ngModel)]="variantForm.specifications" 
+            name="editVariantSpecs"
+            placeholder="Mô tả chi tiết về biến thể..."
+            rows="3"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editVariantSku">SKU</label>
+            <input 
+              type="text" 
+              id="editVariantSku" 
+              [(ngModel)]="variantForm.sku" 
+              name="editVariantSku"
+              placeholder="Mã SKU riêng">
+          </div>
+          <div class="form-group">
+            <label for="editVariantPrice">Giá bổ sung</label>
+            <input 
+              type="number" 
+              id="editVariantPrice" 
+              [(ngModel)]="variantForm.additionalPrice" 
+              name="editVariantPrice"
+              placeholder="0"
+              min="0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editVariantStock">Số lượng tồn kho</label>
+            <input 
+              type="number" 
+              id="editVariantStock" 
+              [(ngModel)]="variantForm.stock" 
+              name="editVariantStock"
+              placeholder="0"
+              min="0">
+          </div>
+          <div class="form-group">
+            <label for="editVariantImage">Hình ảnh biến thể</label>
+            <app-file-upload
+              [currentImageId]="extractFileIdFromUrl(variantForm.imageUrl)"
+              placeholder="Chọn ảnh biến thể..."
+              (fileUploaded)="onVariantImageUploaded($event)"
+              (fileRemoved)="onVariantImageRemoved()"
+              (uploadError)="onVariantImageError($event)">
+            </app-file-upload>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="variantForm.active" 
+              name="editVariantActive">
+            <span class="checkmark"></span>
+            Hoạt động
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeModal()">Hủy</button>
+          <button type="submit" class="save-btn">Cập nhật</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Variant Modal -->
+<div *ngIf="showDeleteVariantModal" class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Xác nhận xóa biến thể</h3>
+      <button class="close-btn" (click)="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="delete-confirmation">
+        <i class="fas fa-exclamation-triangle warning-icon"></i>
+        <p>Bạn có chắc chắn muốn xóa biến thể <strong>"{{ selectedVariant?.name }}"</strong>?</p>
+        <p class="warning-text">Hành động này không thể hoàn tác!</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" (click)="closeModal()">Hủy</button>
+        <button type="button" class="delete-btn" (click)="deleteVariant()">Xóa</button>
+      </div>
+    </div>
+  </div>
+</div>

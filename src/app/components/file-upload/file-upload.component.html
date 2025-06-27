@@ -1,0 +1,69 @@
+<div class="file-upload-container">
+  <!-- Hidden file input -->
+  <input 
+    #fileInput
+    type="file" 
+    accept="image/*"
+    [multiple]="allowMultiple"
+    (change)="onFileSelected($event)"
+    style="display: none">
+
+  <!-- Upload Area -->
+  <div class="upload-area" 
+       [class.has-image]="hasImage"
+       [class.uploading]="isUploading"
+       [class.disabled]="disabled">
+    
+    <!-- Image Preview/Current Image -->
+    <div *ngIf="hasImage" class="image-preview">
+      <img [src]="displayImageUrl" [alt]="placeholder" />
+      
+      <!-- Overlay for actions -->
+      <div class="image-overlay">
+        <button 
+          type="button"
+          class="change-btn" 
+          (click)="triggerFileInput()"
+          [disabled]="disabled || isUploading"
+          title="Thay đổi ảnh">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button 
+          type="button"
+          class="remove-btn" 
+          (click)="removeImage()"
+          [disabled]="disabled || isUploading"
+          title="Xóa ảnh">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+
+      <!-- Upload progress overlay -->
+      <div *ngIf="isUploading" class="upload-progress-overlay">
+        <div class="progress-circle">
+          <div class="progress-text">{{ uploadProgress }}%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Prompt (when no image) -->
+    <div *ngIf="!hasImage" class="upload-prompt" (click)="triggerFileInput()">
+      <div class="upload-icon">
+        <i class="fas fa-cloud-upload-alt" *ngIf="!isUploading"></i>
+        <i class="fas fa-spinner fa-spin" *ngIf="isUploading"></i>
+      </div>
+      
+      <div class="upload-text">
+        <p class="primary-text" *ngIf="!isUploading">{{ placeholder }}</p>
+        <p class="primary-text" *ngIf="isUploading">Đang tải lên...</p>
+        <p class="secondary-text">Kéo thả file hoặc click để chọn</p>
+        <p class="hint-text">JPG, PNG, GIF, WEBP (Max 5MB)</p>
+      </div>
+
+      <!-- Upload progress bar -->
+      <div *ngIf="isUploading" class="progress-bar">
+        <div class="progress-fill" [style.width.%]="uploadProgress"></div>
+      </div>
+    </div>
+  </div>
+</div> 

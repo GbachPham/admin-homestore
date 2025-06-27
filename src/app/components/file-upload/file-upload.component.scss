@@ -1,0 +1,239 @@
+.file-upload-container {
+  width: 100%;
+}
+
+.upload-area {
+  position: relative;
+  border: 2px dashed #e0e0e0;
+  border-radius: 12px;
+  background: #fafafa;
+  transition: all 0.3s ease;
+  overflow: hidden;
+
+  &:hover:not(.disabled) {
+    border-color: #667eea;
+    background: #f8f9ff;
+  }
+
+  &.has-image {
+    border: 2px solid #e0e0e0;
+    background: white;
+    padding: 0;
+  }
+
+  &.uploading {
+    pointer-events: none;
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.upload-prompt {
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  .upload-icon {
+    font-size: 3rem;
+    color: #667eea;
+    margin-bottom: 1rem;
+    
+    i {
+      transition: transform 0.3s ease;
+    }
+  }
+
+  .upload-text {
+    .primary-text {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 0.5rem;
+    }
+
+    .secondary-text {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 0.25rem;
+    }
+
+    .hint-text {
+      font-size: 0.8rem;
+      color: #999;
+      margin: 0;
+    }
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    margin-top: 1rem;
+    overflow: hidden;
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+  }
+
+  &:hover {
+    .upload-icon i {
+      transform: translateY(-2px);
+    }
+  }
+}
+
+.image-preview {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 8px;
+
+    button {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .change-btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #5a6fd8, #6a419a);
+        transform: scale(1.1);
+      }
+    }
+
+    .remove-btn {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+      
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #ff5252, #e53935);
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  &:hover .image-overlay {
+    opacity: 1;
+  }
+
+  .upload-progress-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 8px;
+
+    .progress-circle {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+
+      .progress-text {
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .upload-prompt {
+    padding: 1.5rem;
+    min-height: 150px;
+
+    .upload-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .upload-text {
+      .primary-text {
+        font-size: 1rem;
+      }
+
+      .secondary-text {
+        font-size: 0.85rem;
+      }
+
+      .hint-text {
+        font-size: 0.75rem;
+      }
+    }
+  }
+
+  .image-preview {
+    height: 150px;
+
+    .image-overlay {
+      button {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9rem;
+      }
+    }
+  }
+} 
